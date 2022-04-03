@@ -4,6 +4,9 @@
 const args = process.argv.slice(2, process.argv.length)
 const path = require('path')
 const fs = require('fs')
+const minify = require('html-minifier').minify
+const axios = require('axios')
+const petiteUrl = 'https://unpkg.com/petite-vue'
 
 // check if the user has provided a command
 if (args.length === 0) {
@@ -61,9 +64,12 @@ const slimJs = `
     };
 `
 
-function compileFile (filePath) {
+async function compileFile (filePath) {
     console.time('Successfully compiled file ' + filePath)
     const fileContent = fs.readFileSync(filePath, 'utf8').toString('utf-8')
+
+    // Get petite-vue
+    const petiteVue = (await axios.get(petiteUrl)).data
     
     // Get body
     let body = '<h1>Add a body tag to your .vs file to edit the html</h1>'
@@ -76,6 +82,12 @@ function compileFile (filePath) {
     try {
         _head = fileContent.split('<head>')[1].split('</head>')[0]
     } catch (e) {}
+
+    // Get meta[name=language] from file
+    let language = ''
+    try {
+        language = fileContent.split('<meta name="language" content="')[1].split('">')[0]
+    } catch (e) {language='en'}
 
     // Get script from file
     let script = ''
@@ -92,7 +104,7 @@ function compileFile (filePath) {
         <!-- Start Vue-Slim -->
         <style>/*Keeps content hidden until vue is loaded*/[v-scope]{display:none;}</style>
         <!-- @WYTE/INIT -->
-        <script src="https://unpkg.com/petite-vue"></script>
+        <script>${petiteVue}</script>
         <script>${slimJs}</script>
         <!-- End Vue-Slim -->
 
@@ -103,7 +115,7 @@ function compileFile (filePath) {
 
     const head = `${defaultHead}${_head}`
 
-    let finalHtml = `<!DOCTYPE html><html><head>${head}</head><body>${body}</body></html>`
+    let finalHtml = `<!DOCTYPE html><html lang="${language}"><head>${head}</head><body>${body}</body></html>`
 
     // Convert filePath into an special array
     const filePathArray = filePath.split(path.sep)
@@ -114,6 +126,16 @@ function compileFile (filePath) {
     if (!fs.existsSync(path.join(beforeName, 'dist'))) {
         fs.mkdirSync(path.join(beforeName, 'dist'))
     }
+
+    // Minify html
+    finalHtml = minify(finalHtml, {
+        caseSensitive: true,
+        collapseInlineTagWhitespace: true,
+        collapseWhitespace: true,
+        html5: true,
+        minifyCSS: true,
+        minifyJS: true,
+    })
 
     fs.writeFileSync(distPath, finalHtml)
     console.timeEnd('Successfully compiled file ' + filePath)
