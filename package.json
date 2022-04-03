@@ -1,0 +1,25 @@
+{
+  "name": "vue-slim",
+  "version": "1.0.0",
+  "description": "The easiest way to use petite-vue & a few other frameworks",
+  "main": "slim.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wytejs/vue-slim.git"
+  },
+  "keywords": [
+    "vue",
+    "slim",
+    "vue-s",
+    "vue-slim"
+  ],
+  "author": "greencoder001",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/wytejs/vue-slim/issues"
+  },
+  "homepage": "https://github.com/wytejs/vue-slim#readme"
+}
