@@ -32,6 +32,18 @@ function cRed (text) {
     return `\x1b[31m${text}\x1b[0m`
 }
 
+function cGreen (text) {
+    return `\x1b[32m${text}\x1b[0m`
+}
+
+function cYellow (text) {
+    return `\x1b[33m${text}\x1b[0m`
+}
+
+function cCyan (text) {
+    return `\x1b[36m${text}\x1b[0m`
+}
+
 const command = args[0]
 
 function help () {
@@ -52,6 +64,8 @@ function help () {
             Watches for changes in the current directory and compiles all .vs files
         create:
             Guides the user through creating a new vue-slim project
+        create-component [name]:
+            Creates a new component with the given name
     `)
 }
 
@@ -104,6 +118,30 @@ if (command == 'help') {
     const folder = path.join(process.cwd(), readline.question('Enter the name of the project: ').toLowerCase())
     
     createProject(folder)
+} else if (command === 'create-component') {
+    const componentName = args[1]
+    if (!componentName) {
+        console.log(cRed(`Please provide a component name`))
+        process.exit(1)
+    }
+
+    const MinimalComponent = fs.readFileSync(path.join(__dirname, 'templates', 'components', 'Minimal.vue')).toString('utf-8')
+
+    fs.writeFileSync(path.join(process.cwd(), 'components', componentName + '.vue'), MinimalComponent)
+
+    console.log('Component created!')
+    console.log()
+    console.log('Please add the following to your index.vs file in the script tag:')
+    console.log(cCyan('import ' + componentName + ' from \'./components/' + componentName + '.vue\''))
+    console.log()
+    console.log('And then add the following code to your template:')
+    console.log(cCyan('<' + componentName + '/>'))
+    console.log()
+    console.log('And add ' + cCyan(componentName) + ' to your "components: {...}" option in createApp()')
+    console.log()
+    console.log()
+    console.log('Now you can start coding!')
+
 } else {
     console.log(cRed(`Invalid command: ${command}`))
     help()
