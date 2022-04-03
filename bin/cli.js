@@ -6,8 +6,25 @@ const path = require('path')
 const fs = require('fs')
 const minify = require('html-minifier').minify
 const axios = require('axios')
+const sass = require('sass')
 const petiteUrl = 'https://unpkg.com/petite-vue'
 let petiteCache = false
+
+const getAllFiles = function(rDir, arrayOfFiles = [], dirPath = '', firstIteration = true) {
+  files = fs.readdirSync(path.join(rDir, dirPath))
+
+  arrayOfFiles = arrayOfFiles || []
+
+  files.forEach(function(file) {
+    if (fs.statSync(rDir + '/' + dirPath + "/" + file).isDirectory()) {
+      arrayOfFiles = getAllFiles(rDir, arrayOfFiles, dirPath + "/" + file, false)
+    } else {
+      arrayOfFiles.push(path.join(dirPath, file))
+    }
+  })
+
+  return arrayOfFiles.map(r => r.replace(/\\/g, '/'))
+}
 
 async function getPetiteVueJS () {
     if (petiteCache) return petiteCache
@@ -35,6 +52,9 @@ function help () {
     Commands:
         help:
             Displays this message
+
+        compile:
+            Compiles all .vs file in the current directory
 
         compilefile [file]:
             Compiles a single .vs file into pure html
@@ -72,6 +92,98 @@ const slimJs = `
     };
 `
 
+async function replaceAsync(str, regex, asyncFn) {
+    const promises = [];
+    str.replace(regex, (match, ...args) => {
+        const promise = asyncFn(match, ...args);
+        promises.push(promise);
+    });
+    const data = await Promise.all(promises);
+    return str.replace(regex, () => data.shift());
+}
+
+async function parseScript (script, filePath) {
+    const styles = []
+
+    // import x from 'y'
+    script = await replaceAsync(script, /import(.*?)from(.*?)($|;)/gm, function (match, variable, modul) {
+        variable = variable.trim()
+        modul = modul.trim()
+
+        if (modul.startsWith('"') || modul.startsWith("'")) {
+            modul = modul.substring(1, modul.length - 1)
+        }
+
+        if (modul === 'vue') {
+            // Vue functions are already defined, no need to import them
+            return ''
+        }
+
+        // Other module than vue
+        // Check if
+    })
+
+    // import 'x'
+    script = await replaceAsync(script, /import(.*?)($|;)/gm, async function (match, modul) {
+        modul = modul.trim()
+
+        if (modul.startsWith('"') || modul.startsWith("'")) {
+            modul = modul.substring(1, modul.length - 1)
+        }
+
+        if (modul === 'vue') {
+            // Vue functions are already defined, no need to import them
+            return ''
+        }
+
+        // Other module than vue
+        // Check if it is a local file
+        if (modul.startsWith('.')) {
+            // Local file
+            modul = path.join(path.dirname(filePath), modul)
+            
+            // Check file extension
+            if (modul.endsWith('.css')) {
+                // CSS
+                const cssContent = fs.readFileSync(modul, 'utf8').toString('utf-8')
+                styles.push(cssContent)
+                return ''
+            } else if (modul.endsWith('.sass')) {
+                // SASS
+                const sassContent = sass.renderSync({
+                    file: modul
+                })
+                styles.push(sassContent.css.toString('utf-8'))
+                return ''
+            } else if (modul.endsWith('.scss')) {
+                // SCSS
+                const sassContent = sass.renderSync({
+                    file: modul
+                })
+                styles.push(sassContent.css.toString('utf-8'))
+                return ''
+            } else if (modul.endsWith('.js')) {
+                // JS
+                const jsContent = fs.readFileSync(modul, 'utf8').toString('utf-8')
+                const mjs = await parseScript(jsContent, modul)
+                styles.push(`/*Stylesheets imported from ${filePath} as ${modul}*/${mjs.styles.join('\n')}/* End of import */`)
+                return `/* Imported from ${filePath} as ${modul} */${mjs.sscript}/* End of import */`
+            } else {
+                // Unknown file extension
+                console.log(`Unknown file extension for ${modul}`)
+                return `console.error("Unknown file extension for ${modul}");`
+            }
+        }
+
+        // Couldn't handle it
+        return match
+    })
+
+    const sscript = script
+
+    return { sscript, styles }
+}
+
 async function compileFile (filePath) {
     console.time('Successfully compiled file ' + filePath)
     const fileContent = fs.readFileSync(filePath, 'utf8').toString('utf-8')
@@ -103,6 +215,8 @@ async function compileFile (filePath) {
         script = fileContent.split('<script>')[1].split('</script>')[0]
     } catch (e) {}
 
+    const { sscript, styles } = await parseScript(script, filePath)
+
     // And merge it with the default head
     const defaultHead = `
         <meta charset="utf-8">
@@ -116,9 +230,10 @@ async function compileFile (filePath) {
         <script>${slimJs}</script>
         <!-- End Vue-Slim -->
 
-        <!-- Custom Script -->
-        <script>window.addEventListener('DOMContentLoaded',function(){${script}});</script>
-        <!-- End Custom Script -->
+        <!-- Custom Script & Styles -->
+        <style>${styles.join('')}</style>
+        <script>window.addEventListener('DOMContentLoaded',function(){${sscript}});</script>
+        <!-- End Custom Script & Styles -->
     `
 
     const head = `${defaultHead}${_head}`
@@ -149,6 +264,13 @@ async function compileFile (filePath) {
     console.timeEnd('Successfully compiled file ' + filePath)
 }
 
+async function compileEverything (folder = process.cwd()) {
+    const files = getAllFiles(folder).map(x => x.endsWith('.vs') ? x : null).filter(x => x)
+    for (let i = 0; i < files.length; i++) {
+        await compileFile(files[i])
+    }
+}
+
 // #############################################################################
 
 if (command == 'help') {
@@ -175,6 +297,8 @@ if (command == 'help') {
         console.log(cRed(`Please provide a file to compile`))
         process.exit(1)
     }
+} else if (command === 'compile') {
+    compileEverything()
 } else {
     console.log(cRed(`Invalid command: ${command}`))
     help()
