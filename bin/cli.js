@@ -273,6 +273,8 @@ async function compileEverything (folder = process.cwd()) {
 
 // #############################################################################
 
+let wTo = {}
+
 if (command == 'help') {
     help()
 } else if (command == 'compilefile') {
@@ -299,6 +301,19 @@ if (command == 'help') {
     }
 } else if (command === 'compile') {
     compileEverything()
+} else if (command === 'watch') {
+    compileEverything().then(_ => {
+        console.log('Watching for changes...')
+        fs.watch(process.cwd(), { recursive: true }, (eventType, filename) => {
+            if (filename.endsWith('.vs')) {
+                if (wTo[filename]) {
+                    
+                } else {
+                    wTo[filename] = setTimeout(() => { compileFile(filename); wTo[filename] = undefined }, 1000)
+                }
+            }
+        })
+    })
 } else {
     console.log(cRed(`Invalid command: ${command}`))
     help()
