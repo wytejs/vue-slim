@@ -13,7 +13,7 @@ async function replaceAsync(str, regex, asyncFn) {
     return str.replace(regex, () => data.shift());
 }
 
-async function parseScript (script, filePath, thtml = '', instantjs = '') {
+async function parseScript (script, filePath, thtml = '', instantjs = '', ComponentList = {}) {
     const styles = []
 
     // import x from 'y'
@@ -44,6 +44,14 @@ async function parseScript (script, filePath, thtml = '', instantjs = '') {
                 styles.push(HJC.CSS) // Add styles
                 thtml += HJC.HTML // Add html
                 instantjs += '\n' + HJC.JS // Add js
+
+                // Add to ComponentList
+                ComponentList[ComponentName] = {
+                    name: ComponentName,
+                    path: modul,
+                    type: 'vue',
+                    Use: HJC.Use
+                }
 
                 return ''
             } else {
@@ -96,9 +104,10 @@ async function parseScript (script, filePath, thtml = '', instantjs = '') {
             } else if (modul.endsWith('.js')) {
                 // JS
                 const jsContent = fs.readFileSync(modul, 'utf8').toString('utf-8')
-                const mjs = await parseScript(jsContent, modul, thtml, instantjs)
+                const mjs = await parseScript(jsContent, modul, thtml, instantjs, ComponentList)
                 thtml = mjs.thtml
                 instantjs = '\n' + mjs.instantjs
+                ComponentList = mjs.ComponentList
                 styles.push(`/*Stylesheets imported from ${filePath} as ${modul}*/${mjs.styles.join('\n')}/* End of import */`)
                 return `/* Imported from ${filePath} as ${modul} */${mjs.sscript}/* End of import */`
             } else {
@@ -114,7 +123,7 @@ async function parseScript (script, filePath, thtml = '', instantjs = '') {
 
     const sscript = script
 
-    return { sscript, styles, thtml, instantjs }
+    return { sscript, styles, thtml, instantjs, ComponentList }
 }
 
 module.exports = parseScript

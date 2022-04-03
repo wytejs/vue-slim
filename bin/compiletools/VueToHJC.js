@@ -47,7 +47,7 @@ async function VueToHJC (Vue, ComponentName) {
 
     // Generate code replacing <Component />
     out.Use = function (props = {}) {
-        return `<div v-scope="${ComponentName}(${JSON.stringify(props)})"></div>`
+        return `<div v-scope="${ComponentName}(${JSON.stringify(props).replace(/"(.*?)":/g, '$1:').replace(/"/g, '`')})"></div>`
     }
 
     // Extract JS from first script tag
@@ -121,7 +121,8 @@ async function VueToHJC (Vue, ComponentName) {
     egmethods += '}'
 
     let ejsFunc = `function ${ComponentName} (props) {
-    var gprops = VueSlimJsFilterObjectByKeys(props, ${JSON.stringify(endGameJSObj.props)})
+    if(!props){props={};}
+    ${endGameJSObj.props ? `var gprops = VueSlimJsFilterObjectByKeys(props, ${JSON.stringify(endGameJSObj.props)});` : `var gprops=props;`}
     var methods = ${egmethods}
 
     var data = ${(endGameJSObj.data.toString().replace(/this/g, 'gprops').replace(/data( *?)\(\)( *?){/, '').trim().replace(/return/g, '').substring(0, endGameJSObj.data.toString().replace(/this/g, 'gprops').replace(/data( *?)\(\)( *?){/, '').trim().replace(/return/g, '').length - 1))}

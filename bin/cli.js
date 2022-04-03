@@ -41,7 +41,7 @@ function help () {
         help:
             Displays this message
 
-        compile:
+        compile [--no-minify]:
             Compiles all .vs file in the current directory
 
         compilefile [file]:
@@ -80,7 +80,7 @@ if (command == 'help') {
         process.exit(1)
     }
 } else if (command === 'compile') {
-    compileEverything()
+    compileEverything(process.cwd(), args[1] !== '--no-minify')
 } else if (command === 'watch') {
     compileEverything().then(_ => {
         console.log('Watching for changes...')

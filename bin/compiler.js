@@ -33,6 +33,7 @@ function cRed (text) {
 }
 
 const parseScript = require('./compiletools/parseScript')
+const parseHTML = require('./compiletools/parseHTML')
 
 const slimJs = `
     function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
@@ -96,7 +97,13 @@ const slimJs = `
             vOpts[key] = value;
         }
 
+        if(!options.components){options.components={};}
+
+        vOpts = VueSlimJsMergeObjects(vOpts, options.components);
+
         var vInstance=PetiteVue.createApp(vOpts);
+        vInstance.mount();
+        vInstance.mount=function(){};
         return vInstance;
     };
 `
@@ -111,7 +118,7 @@ async function replaceAsync(str, regex, asyncFn) {
     return str.replace(regex, () => data.shift());
 }
 
-async function compileFile (filePath) {
+async function compileFile (filePath, doMinify = true) {
     console.time('Successfully compiled file ' + filePath)
     const fileContent = fs.readFileSync(filePath, 'utf8').toString('utf-8')
 
@@ -143,7 +150,10 @@ async function compileFile (filePath) {
     } catch (e) {}
 
     // Parse script
-    const { sscript, styles, thtml, instantjs } = await parseScript(script, filePath)
+    const { sscript, styles, thtml, instantjs, ComponentList } = await parseScript(script, filePath)
+
+    // Parse HTML (body)
+    body = await parseHTML(body, ComponentList)
 
     // Parse html (templates)
     let templateHTMLLiteral = ''
@@ -170,7 +180,7 @@ async function compileFile (filePath) {
 
     const head = `${defaultHead}${_head}`
 
-    let finalHtml = `<!DOCTYPE html><html lang="${language}"><head>${head}</head><body>${templateHTMLLiteral}\n\n${body}</body></html>`
+    let finalHtml = `<!DOCTYPE html><html lang="${language}"><head>${head}</head><body v-scope>${templateHTMLLiteral}\n\n${body}</body></html>`
 
     // Convert filePath into an special array
     const filePathArray = filePath.split(path.sep)
@@ -183,23 +193,25 @@ async function compileFile (filePath) {
     }
 
     // Minify html
-    finalHtml = minify(finalHtml, {
-        caseSensitive: true,
-        collapseInlineTagWhitespace: true,
-        collapseWhitespace: true,
-        html5: true,
-        minifyCSS: true,
-        minifyJS: true,
-    })
+    if (doMinify) {
+        finalHtml = minify(finalHtml, {
+            caseSensitive: true,
+            collapseInlineTagWhitespace: true,
+            collapseWhitespace: true,
+            html5: true,
+            minifyCSS: true,
+            minifyJS: true
+        })
+    }
 
     fs.writeFileSync(distPath, finalHtml)
     console.timeEnd('Successfully compiled file ' + filePath)
 }
 
-async function compileEverything (folder = process.cwd()) {
+async function compileEverything (folder = process.cwd(), doMinify = true) {
     const files = getAllFiles(folder).map(x => x.endsWith('.vs') ? x : null).filter(x => x)
     for (let i = 0; i < files.length; i++) {
-        await compileFile(files[i])
+        await compileFile(files[i], doMinify)
     }
 }
 
