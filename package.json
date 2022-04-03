@@ -3,9 +3,10 @@
   "version": "1.2.0",
   "description": "The easiest way to use petite-vue & a few other frameworks",
   "bin": {
-    "vs": "bin/cli.js"
+    "vs": "bin/cli.js",
+    "vue-slim": "bin/cli.js"
   },
-  "main": "bin/cli.js",
+  "main": "bin/compiler.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
