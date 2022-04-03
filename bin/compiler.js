@@ -35,7 +35,7 @@ function cRed (text) {
 const parseScript = require('./compiletools/parseScript')
 
 const slimJs = `
-    function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
+    function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
 
     function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 
@@ -143,10 +143,11 @@ async function compileFile (filePath) {
     } catch (e) {}
 
     // Parse script
-    const { sscript, styles } = await parseScript(script, filePath)
+    const { sscript, styles, thtml, instantjs } = await parseScript(script, filePath)
 
     // Parse html (templates)
     let templateHTMLLiteral = ''
+    templateHTMLLiteral += thtml
 
     // And merge it with the default head
     const defaultHead = `
@@ -163,7 +164,7 @@ async function compileFile (filePath) {
 
         <!-- Custom Script & Styles -->
         <style>${styles.join('')}</style>
-        <script>window.addEventListener('DOMContentLoaded',function(){${sscript}});</script>
+        <script>${instantjs};window.addEventListener('DOMContentLoaded',function(){${sscript}});</script>
         <!-- End Custom Script & Styles -->
     `
 

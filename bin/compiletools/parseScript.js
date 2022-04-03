@@ -1,6 +1,7 @@
 const path = require('path')
 const fs = require('fs')
 const sass = require('sass')
+const VueToHJC = require('./VueToHJC')
 
 async function replaceAsync(str, regex, asyncFn) {
     const promises = [];
@@ -12,11 +13,11 @@ async function replaceAsync(str, regex, asyncFn) {
     return str.replace(regex, () => data.shift());
 }
 
-async function parseScript (script, filePath) {
+async function parseScript (script, filePath, thtml = '', instantjs = '') {
     const styles = []
 
     // import x from 'y'
-    script = await replaceAsync(script, /import(.*?)from(.*?)($|;)/gm, function (match, variable, modul) {
+    script = await replaceAsync(script, /import(.*?)from(.*?)($|;)/gm, async function (match, variable, modul) {
         variable = variable.trim()
         modul = modul.trim()
 
@@ -30,7 +31,27 @@ async function parseScript (script, filePath) {
         }
 
         // Other module than vue
-        // Check if
+        // Check if it is a local module
+        if (modul.startsWith('.')) {
+            modul = path.join(path.dirname(filePath), modul)
+            const ComponentName = path.basename(modul, '.vue')
+
+            if (modul.endsWith('.vue')) {
+                // Vue component
+                const vueTxt = fs.readFileSync(modul, 'utf8').toString('utf-8')
+                const HJC = await VueToHJC(vueTxt, ComponentName)
+
+                styles.push(HJC.CSS) // Add styles
+                thtml += HJC.HTML // Add html
+                instantjs += '\n' + HJC.JS // Add js
+
+                return ''
+            } else {
+                // Unknown file extension
+                console.log(`Unknown file extension for ${modul}`)
+                return `console.error("Unknown file extension for ${modul}");`
+            }
+        }
     })
 
     // import 'x'
@@ -75,7 +96,9 @@ async function parseScript (script, filePath) {
             } else if (modul.endsWith('.js')) {
                 // JS
                 const jsContent = fs.readFileSync(modul, 'utf8').toString('utf-8')
-                const mjs = await parseScript(jsContent, modul)
+                const mjs = await parseScript(jsContent, modul, thtml, instantjs)
+                thtml = mjs.thtml
+                instantjs = '\n' + mjs.instantjs
                 styles.push(`/*Stylesheets imported from ${filePath} as ${modul}*/${mjs.styles.join('\n')}/* End of import */`)
                 return `/* Imported from ${filePath} as ${modul} */${mjs.sscript}/* End of import */`
             } else {
@@ -91,7 +114,7 @@ async function parseScript (script, filePath) {
 
     const sscript = script
 
-    return { sscript, styles }
+    return { sscript, styles, thtml, instantjs }
 }
 
 module.exports = parseScript
