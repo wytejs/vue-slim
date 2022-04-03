@@ -6,7 +6,7 @@
     "vs": "bin/cli.js",
     "vue-slim": "bin/cli.js"
   },
-  "main": "bin/compiler.js",
+  "main": "bin/api.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -29,6 +29,7 @@
   "dependencies": {
     "axios": "^0.26.1",
     "html-minifier": "^4.0.0",
+    "readline-sync": "^1.4.10",
     "sass": "^1.49.11"
   }
 }

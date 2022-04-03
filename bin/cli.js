@@ -4,6 +4,8 @@
 const args = process.argv.slice(2, process.argv.length)
 const path = require('path')
 const fs = require('fs')
+const readline = require("readline-sync")
+const createProject = require('./create')
 
 const getAllFiles = function(rDir, arrayOfFiles = [], dirPath = '', firstIteration = true) {
   files = fs.readdirSync(path.join(rDir, dirPath))
@@ -46,6 +48,10 @@ function help () {
 
         compilefile [file]:
             Compiles a single .vs file into pure html
+        watch:
+            Watches for changes in the current directory and compiles all .vs files
+        create:
+            Guides the user through creating a new vue-slim project
     `)
 }
 
@@ -94,6 +100,10 @@ if (command == 'help') {
             }
         })
     })
+} else if (command === 'create') {
+    const folder = path.join(process.cwd(), readline.question('Enter the name of the project: ').toLowerCase())
+    
+    createProject(folder)
 } else {
     console.log(cRed(`Invalid command: ${command}`))
     help()
