@@ -7,6 +7,14 @@ const fs = require('fs')
 const minify = require('html-minifier').minify
 const axios = require('axios')
 const petiteUrl = 'https://unpkg.com/petite-vue'
+let petiteCache = false
+
+async function getPetiteVueJS () {
+    if (petiteCache) return petiteCache
+
+    petiteCache = (await axios.get(petiteUrl)).data
+    return petiteCache
+}
 
 // check if the user has provided a command
 if (args.length === 0) {
@@ -69,7 +77,7 @@ async function compileFile (filePath) {
     const fileContent = fs.readFileSync(filePath, 'utf8').toString('utf-8')
 
     // Get petite-vue
-    const petiteVue = (await axios.get(petiteUrl)).data
+    const petiteVue = await getPetiteVueJS()
     
     // Get body
     let body = '<h1>Add a body tag to your .vs file to edit the html</h1>'
